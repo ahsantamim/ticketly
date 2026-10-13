@@ -1,0 +1,32 @@
+[project]
+name = "ticketly"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=6.1.2",
+    "django-environ>=0.14.0",
+    "djangorestframework>=3.18.3",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.7.0",
+    "pytest>=9.1.1",
+    "pytest-django>=4.14.0",
+    "ruff>=0.17.0",
+]
+
+[tool.pytest.ini_options]
+# --ds (not the DJANGO_SETTINGS_MODULE ini key) so an exported env var can't override test settings.
+addopts = "--ds=config.settings.test"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "DJ"]
+# The formatter owns line length; long unsplittable strings shouldn't fail lint.
+ignore = ["E501"]
