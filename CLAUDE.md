@@ -12,6 +12,7 @@ Django 6.1 + DRF on Python 3.12, managed with uv (pinned in `uv.lock`). Work is 
 - Run: `uv run python manage.py runserver` (health: `GET /api/health/`)
 - Test: `uv run pytest` (always uses `config.settings.test` via `--ds`)
 - Lint and format: `uv run pre-commit run --all-files` (ruff and file hygiene). Only tracked files are checked.
+- Docker (Gunicorn + Postgres 16): `make up`, `make test` (pytest in a container against Postgres), `make shell`, `make down`. The runtime image must stay under 250 MB.
 
 ## Architecture
 
