@@ -1,0 +1,50 @@
+# Local development stack. Values here are for local Docker only; real environments
+# supply their own SECRET_KEY, ALLOWED_HOSTS and DATABASE_URL.
+# Literal values (no ${VAR} interpolation) so a local .env can't redirect the containers.
+
+x-database-url: &database-url postgres://ticketly:ticketly@db:5432/ticketly
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ticketly
+      POSTGRES_USER: ticketly
+      POSTGRES_PASSWORD: ticketly
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketly -d ticketly"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      target: runtime
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      SECRET_KEY: insecure-local-docker-only-never-use-in-production
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: *database-url
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Runs pytest against Postgres. Behind a profile so `docker compose up` doesn't start it.
+  test:
+    build:
+      context: .
+      target: dev
+    profiles: [test]
+    environment:
+      DATABASE_URL: *database-url
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
