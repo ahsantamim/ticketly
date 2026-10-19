@@ -78,12 +78,6 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
-MAILERS = {
-    "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
-    },
-}
-
 # Endpoints require an authenticated user unless a view explicitly opts out.
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
