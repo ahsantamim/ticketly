@@ -14,7 +14,9 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ticketly -d ticketly"]
+      # -h localhost checks over TCP, like web does. Without it, pg_isready uses the Unix
+      # socket and reports ready while first-run init is still on a socket-only temp server.
+      test: ["CMD-SHELL", "pg_isready -h localhost -U ticketly -d ticketly"]
       interval: 5s
       timeout: 5s
       retries: 10
