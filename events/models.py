@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models import F, Q
 
-from venues.models import Venue
+from venues.models import Seat, Venue
 
 
 # Module level, not nested in Event, so Meta.constraints can reference it.
@@ -56,3 +56,52 @@ class TicketTier(models.Model):
 
     def __str__(self):
         return f"{self.event} / {self.name}"
+
+
+class EventSeatStatus(models.TextChoices):
+    AVAILABLE = "available"
+    HELD = "held"
+    SOLD = "sold"
+
+
+class EventSeat(models.Model):
+    """One inventory row per (event, seat). Phase 2 claims seats with a conditional UPDATE."""
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="inventory")
+    # RESTRICT, not PROTECT: blocks deleting a seat or tier that has inventory, but still
+    # lets event.delete() cascade, since these rows are deleted through Event as well.
+    seat = models.ForeignKey(Seat, on_delete=models.RESTRICT, related_name="event_seats")
+    tier = models.ForeignKey(TicketTier, on_delete=models.RESTRICT, related_name="event_seats")
+    status = models.CharField(
+        max_length=20, choices=EventSeatStatus.choices, default=EventSeatStatus.AVAILABLE
+    )
+    hold_expires_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["event", "seat"], name="event_seat_unique"),
+            models.CheckConstraint(
+                condition=Q(status__in=EventSeatStatus.values), name="event_seat_status_valid"
+            ),
+            # A hold must expire, and only holds have an expiry.
+            models.CheckConstraint(
+                condition=(
+                    Q(status=EventSeatStatus.HELD, hold_expires_at__isnull=False)
+                    | (~Q(status=EventSeatStatus.HELD) & Q(hold_expires_at__isnull=True))
+                ),
+                name="event_seat_hold_expiry_iff_held",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["event", "status"], name="event_seat_event_status_idx"),
+            # Small partial index for the Phase 2 job that expires holds.
+            models.Index(
+                fields=["hold_expires_at"],
+                condition=Q(status=EventSeatStatus.HELD),
+                name="event_seat_held_expiry_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.event} / {self.seat} ({self.status})"

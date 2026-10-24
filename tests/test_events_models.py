@@ -3,11 +3,11 @@ from decimal import Decimal
 
 import pytest
 from django.db import IntegrityError
-from django.db.models import ProtectedError
+from django.db.models import ProtectedError, RestrictedError
 from django.utils import timezone
 
-from events.models import Event, EventStatus, TicketTier
-from venues.models import Venue
+from events.models import Event, EventSeat, EventSeatStatus, EventStatus, TicketTier
+from venues.models import Seat, Venue
 
 pytestmark = pytest.mark.django_db
 
@@ -100,3 +100,82 @@ def test_same_tier_name_allowed_on_another_event(event, venue, starts_at):
     TicketTier.objects.create(event=other, name="VIP", price=Decimal("50.00"))
 
     assert TicketTier.objects.count() == 2
+
+
+@pytest.fixture
+def seat(venue):
+    return Seat.objects.create(venue=venue, section="A", row="1", number=1)
+
+
+@pytest.fixture
+def tier(event):
+    return TicketTier.objects.create(event=event, name="VIP", price=Decimal("50.00"))
+
+
+def test_seat_listed_twice_for_same_event_raises_integrity_error(event, seat, tier):
+    EventSeat.objects.create(event=event, seat=seat, tier=tier)
+
+    with pytest.raises(IntegrityError):
+        EventSeat.objects.create(event=event, seat=seat, tier=tier)
+
+
+def test_unknown_inventory_status_raises_integrity_error(event, seat, tier):
+    with pytest.raises(IntegrityError):
+        EventSeat.objects.create(event=event, seat=seat, tier=tier, status="reserved")
+
+
+def test_hold_without_expiry_raises_integrity_error(event, seat, tier):
+    with pytest.raises(IntegrityError):
+        EventSeat.objects.create(event=event, seat=seat, tier=tier, status=EventSeatStatus.HELD)
+
+
+def test_expiry_on_non_held_seat_raises_integrity_error(event, seat, tier):
+    with pytest.raises(IntegrityError):
+        EventSeat.objects.create(
+            event=event,
+            seat=seat,
+            tier=tier,
+            status=EventSeatStatus.SOLD,
+            hold_expires_at=timezone.now(),
+        )
+
+
+def test_hold_with_expiry_saves(event, seat, tier):
+    EventSeat.objects.create(
+        event=event,
+        seat=seat,
+        tier=tier,
+        status=EventSeatStatus.HELD,
+        hold_expires_at=timezone.now() + timedelta(minutes=10),
+    )
+
+    assert EventSeat.objects.filter(status=EventSeatStatus.HELD).count() == 1
+
+
+def test_deleting_tier_with_inventory_is_blocked(event, seat, tier):
+    EventSeat.objects.create(event=event, seat=seat, tier=tier)
+
+    with pytest.raises(RestrictedError):
+        tier.delete()
+
+    assert TicketTier.objects.count() == 1
+
+
+def test_deleting_seat_with_inventory_is_blocked(event, seat, tier):
+    EventSeat.objects.create(event=event, seat=seat, tier=tier)
+
+    with pytest.raises(RestrictedError):
+        seat.delete()
+
+    assert Seat.objects.count() == 1
+
+
+def test_deleting_event_cascades_to_tiers_and_inventory(event, seat, tier):
+    EventSeat.objects.create(event=event, seat=seat, tier=tier)
+
+    event.delete()
+
+    assert Event.objects.count() == 0
+    assert TicketTier.objects.count() == 0
+    assert EventSeat.objects.count() == 0
+    assert Seat.objects.count() == 1
