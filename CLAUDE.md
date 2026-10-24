@@ -19,7 +19,9 @@ Django 6.1 + DRF on Python 3.12, managed with uv (pinned in `uv.lock`). Work is 
 - `config/settings/{base,dev,test,prod}.py`: `manage.py` defaults to dev, and `wsgi`/`asgi` default to prod (fails closed). Config comes from env via django-environ. prod requires `SECRET_KEY`, `ALLOWED_HOSTS` and `DATABASE_URL`.
 - DRF requires authentication by default (`IsAuthenticated`). Public views must opt out explicitly.
 - Domain apps: `accounts`, `venues`, `events`. Tests live in the top-level `tests/` folder.
+- `AUTH_USER_MODEL` is `accounts.User` (email login). Architecture decisions are recorded in `docs/adr/`.
 
 ## Constraints
 
-- Don't run `migrate` against a database you intend to keep until the custom `User` model (TIC-7) exists.
+- Data rules belong in Postgres (`UniqueConstraint`/`CheckConstraint`), not only in Python. Django `choices` alone don't create a CHECK.
+- Published events are cancelled, never hard-deleted (ADR-001).
