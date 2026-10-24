@@ -56,6 +56,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+# Set before the first migration; swapping it later means a manual data migration.
+AUTH_USER_MODEL = "accounts.User"
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
