@@ -10,7 +10,6 @@ down:
 logs:
 	docker compose logs -f web
 
-# Do not run until the custom User model (TIC-7) exists.
 migrate:
 	docker compose run --rm web python manage.py migrate
 

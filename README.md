@@ -19,11 +19,10 @@ Dependencies are managed with uv and pinned in `uv.lock`.
 ## Run
 
 ```sh
+uv run python manage.py migrate
 uv run python manage.py runserver
 curl localhost:8000/api/health/   # {"status":"ok"}
 ```
-
-Don't run `migrate` yet. The custom user model lands in TIC-7, and it must exist before the first migration.
 
 ## Docker
 
@@ -32,13 +31,14 @@ Runs the API under Gunicorn against Postgres 16. Needs Docker with Compose v2; n
 ```sh
 make up        # docker compose up --build -d
 curl localhost:8000/api/health/   # {"status":"ok"}
+make migrate   # apply migrations to the Docker Postgres
 make test      # pytest inside a container, against Postgres
 make shell     # Django shell in the web container
 make logs      # follow web logs
 make down      # stop; DB data stays in the pgdata volume
 ```
 
-`make migrate` exists but don't run it until TIC-7 (see below). `docker compose down -v` deletes the database volume.
+`make migrate` runs the last built `web` image, so run `make up` first after changing models. `docker compose down -v` deletes the database volume.
 
 The image is built from `python:3.12-slim-trixie` in two stages (uv resolves dependencies in a builder, and the runtime stage copies only the venv and the code). It runs as the non-root `app` user. The `dev` target adds pytest and is used only by `make test`.
 
@@ -64,3 +64,4 @@ Settings live in `config/settings/` and are chosen by `DJANGO_SETTINGS_MODULE`. 
 - `config/`: project settings, URLs, and the health endpoint
 - `accounts/`, `venues/`, `events/`: domain apps
 - `tests/`: pytest suite
+- `docs/adr/`: architecture decision records
