@@ -59,4 +59,6 @@ USER app
 EXPOSE 8000
 
 # config.wsgi defaults to config.settings.prod.
-CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-"]
+# --no-control-socket: Gunicorn's gunicornc socket defaults to $HOME/.gunicorn, and the app user
+# has no home directory. Containers are managed through Docker, not gunicornc.
+CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-", "--no-control-socket"]
